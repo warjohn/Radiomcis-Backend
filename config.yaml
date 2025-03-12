@@ -1,0 +1,41 @@
+llmModel:
+  name: 'llama3.1'
+  lang: 'RU'
+radiomics:
+  filters: {
+          "origin" : [1.0],
+          "origin_1" : [2.0]
+          }
+sklearn:
+  transformers:
+    - name: StandardScaler
+      params: {}
+    - name: OneHotEncoder
+      params:
+        handle_unknown: ignore
+  model:
+    name: KNeighborsClassifier
+    params:
+      weights: 'distance'
+      leaf_size: 1
+  selectionParams:
+    enable: True
+    name: GridSearchCV
+    params:
+      cv: 5
+      verbose: 3
+      n_jobs: 20
+    param_grid:
+      KNeighborsClassifier__leaf_size: [1, 2, 20]
+  metrics:
+    - name: accuracy_score
+      params: {}
+    - name: precision_score
+      params:
+        average: weighted
+        zero_division: 0
+    - name: balanced_accuracy_score
+      params: {}
+  pictures:
+    - name: roc_curve
+    - name: confusion_matrix
