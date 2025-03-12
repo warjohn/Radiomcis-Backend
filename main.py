@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 import yaml
 import os
+import traceback
 
 app = FastAPI()
 UPLOAD_DIR = 'reports'
@@ -40,17 +41,15 @@ async def upload_yaml_file(file: UploadFile = File(...)):
             f.write(file_content_str)
 
         # Вызываем вашу функцию для обработки YAML-файла
-        report_generator = SklearnReportGenerator(config_file='config.yaml', output_format="PDF")
-        report_generator.extract(csv_file_path="tmp.csv",
-                                 output_csv_path="output-scv.csv",
-                                 n_jobs=40)
+        report_generator = SklearnReportGenerator(config_file=file_path, output_format="PDF")
+        report_generator.extract(n_jobs=40)
+
 
         # Возвращаем результат: имя файла, путь к сохраненному файлу,
         # содержимое как строка, распарсенный YAML и результат обработки
         return JSONResponse(
             content={
                 "filename": file.filename,
-                "file_path": file_path,
                 "file_content": file_content_str,  # Содержимое файла в виде строки
                 "parsed_yaml": yaml_data,  # Распарсенный YAML в виде словаря
                 "processing_result": "processing_result"  # Результат вашей обработки
@@ -59,6 +58,8 @@ async def upload_yaml_file(file: UploadFile = File(...)):
         )
     except Exception as e:
         # В случае ошибки возвращаем сообщение об ошибке
+        error_traceback = traceback.format_exc()
+        print(error_traceback)  # Выводим трассировку в консоль (для отладки)
         return JSONResponse(
             content={"error": str(e)},
             status_code=500

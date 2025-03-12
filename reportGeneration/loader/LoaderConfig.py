@@ -56,14 +56,24 @@ class LoaderConfig():
     def geneartePipelines(self):
         self.pipeline = sk.pipeline.Pipeline(self.steps)
 
-    def loadfeaures(self) -> dict:
-        return self.config['radiomics']['filters']
+    def loadfeaures(self):
+        print(self.config['radiomics']['filters'][0]['name'])
+        print(type(self.config['radiomics']['filters'][0]['name']))
+        return self.config['radiomics']['filters'][0]['name']
+
+    def loadInputFile(self):
+        self.openFile()
+        return self.config['file_path']
 
     def loadRadiomics(self):
         self.openFile()
-        featuresDict = self.loadfeaures()
-        print(featuresDict)
+        return self.loadfeaures()
 
+    def loadRadiomicsSettings(self) -> dict:
+        self.openFile()
+        print(self.config['radiomics']['filters'][1]['settings'])
+        print(type(self.config['radiomics']['filters'][1]['settings']))
+        return self.config['radiomics']['filters'][1]['settings']
 
     def generateWay(self):
         self.openFile()

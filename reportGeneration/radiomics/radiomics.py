@@ -6,58 +6,66 @@ import numpy as np
 
 from joblib import Parallel, delayed
 from radiomics import featureextractor
+from radiomics.featureextractor import RadiomicsFeatureExtractor
 
 
 class Radiomcis():
 
-    def __init__(self, csv_file_path, output_csv_path, n_jobs = 1, new_spacing=None):
+    def __init__(self, csv_file_path : str, output_csv_path : str, filters : list, settings : dict, n_jobs = 1, new_spacing=None):
         self.csv_file_path = csv_file_path
-        self.output_csv_path = output_csv_path
+        self.output_csv_path = self.__checks(output_csv_path)
+        self.filters = self.__checkFilters(filters)
+        self.settings = self.__checkSettings(settings)
         self.variant = 1
         self.n_jobs = n_jobs
         self.new_spacing = new_spacing
 
+    def __checks(self, output_csv_path):
+        if not os.path.exists(output_csv_path):
+            with open(output_csv_path, 'w'):
+                pass
+            return output_csv_path
+        else:
+            return output_csv_path
+
+    def __checkFilters(self, filters : list):
+        if len(filters) == 0:
+            return filters.append("Original")
+        else:
+            return filters
+
+    def __checkSettings(self, settings : dict):
+        if not settings:
+            settings = {}
+            settings['binWidth'] = 25
+            settings['wavelet'] = 'db2'
+            settings['sigma'] = [0.5, 2.5]
+            settings['alpha'] = 0.25
+            settings['Interpolator'] = sitk.sitkBSpline
+            settings['voxelArrayShift'] = 1000
+            settings['normalize'] = True
+            settings['normalizeScale'] = 100
+            settings['label'] = 255
+            settings['approximation'] = True
+            return settings
+        else:
+            return settings
+
+    def __initFilters(self, extractor : RadiomicsFeatureExtractor) -> RadiomicsFeatureExtractor:
+        for i in self.filters:
+            extractor.enableImageTypeByName(str(i))
+        return extractor
+
     def extract_features_from_csv(self):
         start_time = time.time()
 
-        settings = {}
-        settings['binWidth'] = 25
-        settings['wavelet'] = 'db2'
-        settings['sigma'] = [0.5, 2.5]
-        settings['alpha'] = 0.25
-        settings['Interpolator'] = sitk.sitkBSpline
-        settings['voxelArrayShift'] = 1000
-        settings['normalize'] = True
-        settings['normalizeScale'] = 100
-        settings['label'] = 255
-        settings['approximation'] = True
-
-        extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
-
-        extractor.enableImageTypeByName('Original')
-        extractor.enableImageTypeByName('LoG')
-        extractor.enableImageTypeByName('Wavelet')
-        extractor.enableImageTypeByName('Logarithm')
-        extractor.enableImageTypeByName('Square')
-        extractor.enableImageTypeByName('Gradient')
-        extractor.enableImageTypeByName('Exponential')
-        extractor.enableImageTypeByName('LBP2D')
-        extractor.enableImageTypeByName('LBP3D')
-        extractor.enableImageTypeByName('SquareRoot')
+        extractor = featureextractor.RadiomicsFeatureExtractor(**self.settings)
+        extractor = self.__initFilters(extractor)
         extractor.enableAllFeatures()
-        extractor.enableFeaturesByName(
-            firstorder=['Energy', 'TotalEnergy', 'Entropy', 'Minimum', '10Percentile', '90Percentile', 'Maximum',
-                        'Mean',
-                        'Median', 'InterquartileRange', 'Range', 'MeanAbsoluteDeviation', 'RobustMeanAbsoluteDeviation',
-                        'RootMeanSquared', 'StandardDeviation', 'Skewness', 'Kurtosis', 'Variance', 'Uniformity'])
-        extractor.enableFeaturesByName(
-            shape=['VoxelVolume', 'MeshVolume', 'SurfaceArea', 'SurfaceVolumeRatio', 'Compactness1', 'Compactness2',
-                   'Sphericity', 'SphericalDisproportion', 'Maximum3DDiameter', 'Maximum2DDiameterSlice',
-                   'Maximum2DDiameterColumn', 'Maximum2DDiameterRow', 'MajorAxisLength', 'MinorAxisLength',
-                   'LeastAxisLength', 'Elongation', 'Flatness'])
 
         processed_files = set()
 
+        print(self.output_csv_path)
         with open(self.output_csv_path, newline='') as result_csvfile:
             reader = csv.DictReader(result_csvfile)
             for row in reader:
@@ -83,7 +91,7 @@ class Radiomcis():
         image_path = row[0]
         mask_path = row[1]
 
-        _, name = os.path.dirname(image_path)
+        name = os.path.dirname(image_path)
 
         if image_path in processed_files:
             return

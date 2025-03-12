@@ -1,4 +1,6 @@
+import os
 import time
+import shutil
 import datetime
 import sklearn as sk
 
@@ -9,6 +11,7 @@ from reportGeneration.formats.PDF_format import GeneratePdfReport
 from reportGeneration.formats.DOCS_format import GenerateDocsReport
 from reportGeneration.llm.llm import ChatModel
 from reportGeneration.radiomics.radiomics import Radiomcis
+
 
 class SklearnReportGenerator(sk.base.BaseEstimator):
     """
@@ -26,8 +29,6 @@ class SklearnReportGenerator(sk.base.BaseEstimator):
         self.model = None
         self.metrics = []
         self.pipeline = None
-        self.features = None
-        self._load_config()
 
     def _load_config(self):
         loader = LoaderConfig(self.config_file)
@@ -40,12 +41,33 @@ class SklearnReportGenerator(sk.base.BaseEstimator):
 
     def _loadRadiomics(self):
         loader = LoaderConfig(self.config_file)
-        self.features = loader.loadRadiomics()
-        print("self.features", self.features)
+        self.path2inputFile = loader.loadInputFile()
+        self.filters = loader.loadRadiomics()
+        self.settings = loader.loadRadiomicsSettings()
 
-    def extract(self, csv_file_path, output_csv_path, n_jobs, new_spacing = None):
+    def __create_root_dir(self):
+        dirs = [self.testDir, f"{self.testDir}/radiomics", f"{self.testDir}/features"]
+        for directory in dirs:
+            os.makedirs(directory, exist_ok=True)
+
+    def extract(self, n_jobs, new_spacing=None):
+        self.__create_root_dir()
         self._loadRadiomics()
-        radiomics = Radiomcis(csv_file_path, output_csv_path, n_jobs, new_spacing)
+        radiomics_input = os.path.join(self.testDir, "radiomics", os.path.basename(self.path2inputFile))
+        features_output = os.path.join(self.testDir, "features", "data-original.csv")
+        try:
+            shutil.copy(self.path2inputFile, radiomics_input)
+            shutil.move(self.config_file, self.testDir)
+        except (shutil.Error, FileNotFoundError) as e:
+            raise RuntimeError(f"Error: {e}")
+        radiomics = Radiomcis(
+            csv_file_path=radiomics_input,
+            output_csv_path=features_output,
+            filters=self.filters,
+            settings=self.settings,
+            n_jobs=n_jobs,
+            new_spacing=new_spacing
+        )
         radiomics.extract_features_from_csv()
 
     def fit(self, X, y, X_test=None, y_test=None, *args, **kwargs):
