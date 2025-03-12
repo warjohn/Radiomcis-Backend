@@ -93,47 +93,68 @@ if __name__ == "__main__":
 
 The configuration file (config.yaml) defines the transformers, model, selection parameters (optional), and metrics to be used in the report generation.
 ```yaml
+data:
+  pathan-path: "testDir/pathan.csv"  # Path to the main dataset file (e.g., patient data)
+  norma-path: "path/to/your/norma.csv"  # Path to the normal (control) dataset file
+  target:
+    - name: "outcome"  # Name of the target variable (dependent variable)
+    - type-variable: "binary"  # Type of the target variable: binary or continuous
+      # binary: Used for classification tasks (e.g., healthy vs. diseased)
+      # continuous: Used for regression tasks (e.g., predicting a numeric value like tumor size)
+
+# Configuration for the Language Model (LLM)
 llmModel:
-  name: 'llama3.1'
-  lang: 'RU'
+  name: 'llama3.1'  # Name of the language model being used
+  lang: 'RU'        # Language of the model (in this case, Russian)
+
+# Radiomics feature extraction settings
 radiomics:
-  filters: {
-          "origin" : [1.0],
-          "origin_1" : [2.0]
-          }
+  filters:
+    - name: ["Original", "LoG"]  # Filters to apply: Original (unfiltered) and Laplacian of Gaussian (LoG)
+    - settings: {
+          "binWidth": 25,       # Bin width for discretization of image intensity values
+          "wavelet": 'db2',     # Wavelet type for wavelet transformation (e.g., Daubechies 2)
+          "sigma": [0.5, 2.5]   # Sigma values for the Laplacian of Gaussian filter
+      }
+
+# Scikit-learn pipeline configuration
 sklearn:
-  transformers:
-    - name: StandardScaler
-      params: {}
-    - name: OneHotEncoder
+  transformers:  # List of data transformers to apply before modeling
+    - name: StandardScaler  # Standardizes features by removing the mean and scaling to unit variance
+      params: {}            # No additional parameters for StandardScaler
+    - name: OneHotEncoder   # Encodes categorical features as one-hot numeric arrays
       params:
-        handle_unknown: ignore
-  model:
-    name: KNeighborsClassifier
+        handle_unknown: ignore  # Ignore unknown categories during encoding
+
+  model:  # Machine learning model configuration
+    name: KNeighborsClassifier  # Algorithm to use: K-Nearest Neighbors Classifier
     params:
-      weights: 'distance'
-      leaf_size: 1
-  selectionParams:
-    enable: True
-    name: GridSearchCV
+      weights: 'distance'       # Weight function used in prediction (distance-based weighting)
+      leaf_size: 1              # Leaf size for the KDTree or BallTree algorithm
+
+  selectionParams:  # Hyperparameter tuning settings
+    enable: True                # Enable hyperparameter optimization
+    name: GridSearchCV          # Use Grid Search for hyperparameter tuning
     params:
-      cv: 5
-      verbose: 3
-      n_jobs: 20
-    param_grid:
-      KNeighborsClassifier__leaf_size: [1, 2, 20]
-  metrics:
-    - name: accuracy_score
+      cv: 5                     # Number of cross-validation folds
+      verbose: 3                # Verbosity level (higher = more detailed output)
+      n_jobs: 20                # Number of parallel jobs to run
+    param_grid:                 # Parameter grid for Grid Search
+      KNeighborsClassifier__leaf_size: [1, 2, 20]  # Range of leaf_size values to test
+
+  metrics:  # Metrics to evaluate model performance
+    - name: accuracy_score      # Accuracy metric
       params: {}
-    - name: precision_score
+    - name: precision_score     # Precision metric
       params:
-        average: weighted
-        zero_division: 0
-    - name: balanced_accuracy_score
+        average: weighted       # Weighted averaging for multi-class classification
+        zero_division: 0        # Handle cases where there are no predicted samples
+    - name: balanced_accuracy_score  # Balanced accuracy metric (handles imbalanced datasets)
       params: {}
-  pictures:
-    - name: roc_curve
-    - name: confusion_matrix
+
+  pictures:  # Visualization settings
+    - name: roc_curve           # Plot the Receiver Operating Characteristic (ROC) curve
+    - name: confusion_matrix    # Plot the Confusion Matrix
 ```
 
 ## Configuration Breakdown
