@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import csv
@@ -5,9 +6,11 @@ import SimpleITK as sitk
 import numpy as np
 
 from joblib import Parallel, delayed
+import radiomics
 from radiomics import featureextractor
 from radiomics.featureextractor import RadiomicsFeatureExtractor
 
+radiomics.logger.setLevel(logging.CRITICAL)
 
 class Radiomcis():
 
@@ -65,7 +68,6 @@ class Radiomcis():
 
         processed_files = set()
 
-        print(self.output_csv_path)
         with open(self.output_csv_path, newline='') as result_csvfile:
             reader = csv.DictReader(result_csvfile)
             for row in reader:
@@ -84,7 +86,7 @@ class Radiomcis():
                                                        self.new_spacing) for idx, row in enumerate(reader, 1))
 
         end_time = time.time()
-        print(f"Processing completed in {end_time - start_time} seconds.")
+        print(f"Radiomic processing completed in {end_time - start_time} seconds.")
 
     def process_image_2D_rgb(self, idx, row, extractor, output_csv_path, processed_files, new_spacing):
         # try:
@@ -112,8 +114,8 @@ class Radiomcis():
         image = sitk.GetImageFromArray(image)
         mask = sitk.GetImageFromArray(mask)
 
-        print("shape image", sitk.GetArrayFromImage(image).shape)
-        print("shape mask", sitk.GetArrayFromImage(mask).shape)
+        # print("shape image", sitk.GetArrayFromImage(image).shape)
+        # print("shape mask", sitk.GetArrayFromImage(mask).shape)
 
         result = 0
         try:

@@ -3,7 +3,8 @@ import ollama
 class ChatModel():
     """
     """
-    def __init__(self, lang, model, data):
+    def __init__(self, base_url, lang, model, data):
+        self.client = ollama.Client(host=base_url)
         self.lang = lang
         self.model = model
         self.data = data
@@ -20,7 +21,7 @@ class ChatModel():
 
     def qa(self):
         self.__cratePromt()
-        response = ollama.chat(
+        response = self.client.chat(
             model=f"{self.model}",
             messages=[
                 {"role": "system", "content": self.fullinstruction},

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Radimoics-Backend
+    ports:
+      - "5555:5555" # Порт, на котором будет работать приложение
+    environment:
+      - PYTHONUNBUFFERED=1
+      - EXTERNAL_URL=http://host.docker.internal:11436  # Адрес для обращения вне контейнера
+    volumes:
+      - ./reports:/app/reports  # Монтирование локальной директории reports
+    network_mode: "bridge"  # Использование bridge-сети для доступа к host.docker.internal

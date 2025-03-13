@@ -1,16 +1,13 @@
 data:
-  pathan-path: "testDir/pathan.csv"  # Path to the main dataset file (e.g., patient data)
-  norma-path: "path/to/your/norma.csv"  # Path to the normal (control) dataset file
-  target:
-    - name: "outcome"  # Name of the target variable (dependent variable)
-    - type-variable: "binary"  # Type of the target variable: binary or continuous
-      # binary: Used for classification tasks (e.g., healthy vs. diseased)
-      # continuous: Used for regression tasks (e.g., predicting a numeric value like tumor size)
+  file-path: {
+        "testDir/pathan.csv" : 1
+  }  # Dict where keys - path/to/your/file.csv , value - target value (it can be int or float or some other type_var; it can be path/to/your/tabel-with-target-value.csv)
 
 # Configuration for the Language Model (LLM)
 llmModel:
   name: 'llama3.1'  # Name of the language model being used
   lang: 'RU'        # Language of the model (in this case, Russian)
+  base_url: "http://0.0.0.0:11436" # base url on localhost
 
 # Radiomics feature extraction settings
 radiomics:
@@ -58,5 +55,5 @@ sklearn:
       params: {}
 
   pictures:  # Visualization settings
-    - name: roc_curve           # Plot the Receiver Operating Characteristic (ROC) curve
-    - name: confusion_matrix    # Plot the Confusion Matrix
+    - name: #roc_curve           # Plot the Receiver Operating Characteristic (ROC) curve
+    - name: #confusion_matrix    # Plot the Confusion Matrix

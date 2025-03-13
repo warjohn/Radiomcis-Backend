@@ -9,9 +9,7 @@ import traceback
 
 app = FastAPI()
 UPLOAD_DIR = 'reports'
-
-# report_generator.fit(X_train, y_train, X_test, y_test)
-# report_generator.predict(X_test)
+external_url = os.getenv("EXTERNAL_URL", "http://0.0.0.0:11436")
 
 @app.post("/upload/")
 async def upload_yaml_file(file: UploadFile = File(...)):
@@ -41,12 +39,13 @@ async def upload_yaml_file(file: UploadFile = File(...)):
             f.write(file_content_str)
 
         # Вызываем вашу функцию для обработки YAML-файла
-        report_generator = SklearnReportGenerator(config_file=file_path, output_format="PDF")
-        report_generator.extract(n_jobs=40)
+        report_generator = SklearnReportGenerator(config_file=file_path, output_format="DOCS")
+        report_generator.extractFeatures(n_jobs=40)
+        report_generator.fit()
+        report_generator.predict()
 
+        print("\t\t ----- Ready -----")
 
-        # Возвращаем результат: имя файла, путь к сохраненному файлу,
-        # содержимое как строка, распарсенный YAML и результат обработки
         return JSONResponse(
             content={
                 "filename": file.filename,

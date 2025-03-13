@@ -10,7 +10,6 @@ class GeneratePdfReport():
     font_path = pkg_resources.resource_filename(
         'reportGeneration', 'fonts/Times_New_Roman.ttf'
     )
-    print(font_path)
     pdfmetrics.registerFont(TTFont('TimesNewRoman', font_path))
 
     @classmethod

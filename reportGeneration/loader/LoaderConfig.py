@@ -50,20 +50,19 @@ class LoaderConfig():
         self.steps.append((f"{self.model.__class__.__name__}", self.model))
 
     def loadLLM(self):
-        self.llm_model = self.config["llmModel"]['name']
-        self.lang = self.config["llmModel"]['lang']
+        self.openFile()
+        return self.config["llmModel"]['name'], self.config["llmModel"]['lang'], self.config['llmModel']['base_url']
+
 
     def geneartePipelines(self):
         self.pipeline = sk.pipeline.Pipeline(self.steps)
 
     def loadfeaures(self):
-        print(self.config['radiomics']['filters'][0]['name'])
-        print(type(self.config['radiomics']['filters'][0]['name']))
         return self.config['radiomics']['filters'][0]['name']
 
-    def loadInputFile(self):
+    def loadInputFile(self) -> dict:
         self.openFile()
-        return self.config['file_path']
+        return self.config['data']['file-path']
 
     def loadRadiomics(self):
         self.openFile()
@@ -71,8 +70,6 @@ class LoaderConfig():
 
     def loadRadiomicsSettings(self) -> dict:
         self.openFile()
-        print(self.config['radiomics']['filters'][1]['settings'])
-        print(type(self.config['radiomics']['filters'][1]['settings']))
         return self.config['radiomics']['filters'][1]['settings']
 
     def generateWay(self):

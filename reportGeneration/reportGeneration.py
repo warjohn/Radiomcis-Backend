@@ -11,6 +11,7 @@ from reportGeneration.formats.PDF_format import GeneratePdfReport
 from reportGeneration.formats.DOCS_format import GenerateDocsReport
 from reportGeneration.llm.llm import ChatModel
 from reportGeneration.radiomics.radiomics import Radiomcis
+from reportGeneration.dataProcess.dataProcess import Data
 
 
 class SklearnReportGenerator(sk.base.BaseEstimator):
@@ -30,62 +31,72 @@ class SklearnReportGenerator(sk.base.BaseEstimator):
         self.metrics = []
         self.pipeline = None
 
-    def _load_config(self):
-        loader = LoaderConfig(self.config_file)
+    def _load_config(self, config_file):
+        loader = LoaderConfig(config_file)
         self.pipeline = loader.generateWay()
         self.model = loader.model
         self.metrics = loader.metrics
         self.pictures = loader.pictures
-        self.llm_model = loader.llm_model
-        self.lang = loader.lang
 
     def _loadRadiomics(self):
         loader = LoaderConfig(self.config_file)
-        self.path2inputFile = loader.loadInputFile()
+        self.path2inputFileDict = loader.loadInputFile()
         self.filters = loader.loadRadiomics()
         self.settings = loader.loadRadiomicsSettings()
+
+    def _loadChatModel(self, config_file):
+        loader = LoaderConfig(config_file)
+        self.llm_model, self.lang, self.base_url = loader.loadLLM()
 
     def __create_root_dir(self):
         dirs = [self.testDir, f"{self.testDir}/radiomics", f"{self.testDir}/features"]
         for directory in dirs:
-            os.makedirs(directory, exist_ok=True)
+            os.makedirs(directory, exist_ok=False)
 
-    def extract(self, n_jobs, new_spacing=None):
+    def extractFeatures(self, n_jobs, new_spacing=None):
         self.__create_root_dir()
         self._loadRadiomics()
-        radiomics_input = os.path.join(self.testDir, "radiomics", os.path.basename(self.path2inputFile))
-        features_output = os.path.join(self.testDir, "features", "data-original.csv")
-        try:
-            shutil.copy(self.path2inputFile, radiomics_input)
-            shutil.move(self.config_file, self.testDir)
-        except (shutil.Error, FileNotFoundError) as e:
-            raise RuntimeError(f"Error: {e}")
-        radiomics = Radiomcis(
-            csv_file_path=radiomics_input,
-            output_csv_path=features_output,
-            filters=self.filters,
-            settings=self.settings,
-            n_jobs=n_jobs,
-            new_spacing=new_spacing
-        )
-        radiomics.extract_features_from_csv()
 
-    def fit(self, X, y, X_test=None, y_test=None, *args, **kwargs):
+        for key, value in self.path2inputFileDict.items():
+            radiomics_input = os.path.join(self.testDir, "radiomics", os.path.basename(key))
+            features_output = os.path.join(self.testDir, "features", f"{os.path.basename(key).split('.')[0]}-original.csv")
+            data_pros = os.path.join(self.testDir, "features", f"{os.path.basename(key).split('.')[0]}-process.csv")
+            try:
+                shutil.copy(key, radiomics_input)
+                shutil.move(self.config_file, self.testDir)
+            except (shutil.Error, FileNotFoundError) as e:
+                raise RuntimeError(f"Error: {e}")
+            radiomics = Radiomcis(
+                csv_file_path=radiomics_input,
+                output_csv_path=features_output,
+                filters=self.filters,
+                settings=self.settings,
+                n_jobs=n_jobs,
+                new_spacing=new_spacing
+            )
+            radiomics.extract_features_from_csv()
+            data = Data(features_output, data_pros)
+            self.df = data.pipeline(value)
+
+    def fit(self, test_size = 0.3, random_state = 42, X = None, y = None, X_test=None, y_test=None, *args, **kwargs):
+        self.new_path_config = os.path.join(self.testDir, os.path.basename(self.config_file))
+        self._load_config(self.new_path_config)
         start_time = time.time()
-        self.pipeline.fit(X, y, *args, **kwargs)
+
+        self.X_train, self.X_test, self.y_train, self.y_test = sk.model_selection.train_test_split(self.df.iloc[:, 1:-1], self.df.iloc[:, -1], test_size=test_size, random_state=random_state)
+
+        self.pipeline.fit(self.X_train, self.y_train, *args, **kwargs)
+
         end_time = time.time()
         self.train_time = end_time - start_time
-
-        self.X_train, self.y_train = X, y
-        self.X_test, self.y_test = X_test, y_test
         return self
 
-    def predict(self, X):
-        y_pred = self.pipeline.predict(X)
-        self._generate_report(X, y_pred)
+    def predict(self):
+        y_pred = self.pipeline.predict(self.X_test)
+        self._generate_report(y_pred)
         return y_pred
 
-    def _generate_report(self, X, y_pred):
+    def _generate_report(self, y_pred):
         report_file = f"{self.testDir}/report_{self.model.__class__.__name__}_{self.timestamp}.html"
         task_type = "classification" if sk.base.is_classifier(self.model) else "regression"
 
@@ -98,9 +109,8 @@ class SklearnReportGenerator(sk.base.BaseEstimator):
         if "roc_curve" in self.pictures and task_type == "classification" and len(set(self.y_test)) == 2:
             draw.create_roc_auc(self.y_test, y_pred)
 
-        print(metrics_result)
-
-        chat = ChatModel(self.lang, self.llm_model, str(self.pipeline) + str(metrics_result))
+        self._loadChatModel(self.new_path_config)
+        chat = ChatModel(self.base_url, self.lang, self.llm_model, str(self.pipeline) + str(metrics_result))
         report = chat.qa()
         if self.format == "PDF":
             GeneratePdfReport().generatereport(report_file, report)
